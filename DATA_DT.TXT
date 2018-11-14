@@ -1,0 +1,445 @@
+
+Datenaustausch an der seriellen Schnittstelle der Funkuhren 
+mit PC-Schnittstelle
+
+1. Allgemeines
+
+Die serielle Schnittstelle besteht aus einer Leitung als Dateneingang und 
+einer Leitung als Datenausgang. Somit können über die serielle Schnittstelle 
+Daten aus dem Controller der Funkuhr abgefordert und in begrenztem Maße 
+auch Steuerungen des Controllers realisiert werden. Der Datenverkehr auf 
+beiden Leitungen findet mit 300 bps statt. Wegen der begrenzten Ressourcen 
+des Controllers kommt ein einfaches Softwareprotokoll zur Anwendung.
+Handshakeleitungen stehen nicht zur Verfügung. Jedoch ist auf der Basis des 
+Zeichenechos eine einfache Synchronisation möglich.
+
+2. Datenformat
+
+2.1. Daten zur Funkuhr
+
+2.1.1. Schnittstellenparameter
+
+Geschwindigkeit:    300 bps
+      Datenbits:    8
+    Paritätsbit:    nein
+      Stoppbits:    2
+
+2.1.2. Funktion der Dateneingabe
+
+Die Funkuhr übernimmt Befehle, die aus je einem Zeichen bestehen. Ein 
+nachfolgendes Zeichen "CR" (hex 0d) veranlaßt den Controller, den Befehl 
+auszuführen. Die Befehlszeichen werden nur in den niederwertigen vier Bit 
+dekodiert. D.h., daß "?", "O" und "o" zum Beispiel immer die gleiche Wirkung 
+haben (hex 3f, 4f und 6f). Nur das den Befehl abschließende "CR" wird 
+vollständig dekodiert.
+
+2.2. Antworten der Funkuhr
+
+2.2.1. Schnittstellenparameter
+
+Geschwindigkeit:    300 bps
+      Datenbits:    7
+    Paritätsbit:    gerade
+      Stoppbits:    2
+
+2.2.2. Funktion der Datenausgabe
+
+Eine Antwort der Funkuhr besteht aus einer Folge von ASCII-Zeichen und 
+einem abschließendem Zeichen "CR".
+Der Wertevorrat ist auf die Ziffern 0 ... 9 und die Zeichen : ; < = > ? 
+beschränkt. Die Informationen sind stets in den niederwertigen vier Bits 
+enthalten.
+Bit4 und Bit5 eines jeden geantworteten Zeichens sind stets gleich eins, 
+Bit6 ist gleich null und Bit7 ist immer entsprechend der geraden Parität des 
+Zeichens gesetzt. Damit ergeben sich die obengenannten 16 Zeichen des 
+Wertevorrats.
+Während der Antwort der Funkuhr gibt es keine Unterbrechungsmöglichkeit 
+der seriellen Ausgabe, d.h. alle Zeichen müssen auf der Gegenseite sofort 
+abgenommen werden.
+
+2.3. Unterstützung eines vereinfachten Datenaustauschs
+
+Um den Softwareaufwand für Hostrechner ohne serielle Standardschnittstelle 
+möglichst klein zu halten ist eine vereinfachte Form des Datenaustauschs 
+möglich.
+Der Befehl unter 5.1. (Zeitprotokoll senden) läßt sich neben der Steuerung 
+über eine Folge von ASCII-Zeichen auch einfacher auslösen. Hierzu ist der 
+Pegel auf der Empfangsleitung der Funkuhr (TxD des PC) so lange positiv 
+zu halten, bis die Funkuhr mit der Abgabe des Zeitprotokolls begonnen 
+hat. Das kann maximal eine Sekunde dauern, da das erste Startbit des 
+Zeitprotokolls stets zur vollen Sekunde abgegeben wird und somit den 
+Sekundenbeginn kennzeichnet. TxD hat normalerweise Low-Pegel (inaktiv) und 
+ist zum Senden des Zeitprotokolls auf High (aktiv) zu legen.
+Der Pegel von TxD kann beliebig lange positiv gehalten werden, so daß 
+beispielsweise ständig zu jeder vollen Sekunde das Zeitprotokoll abgegeben 
+wird. Bei dieser Betriebsweise ist jedoch zu beachten, daß sich die 
+Stromaufnahme der Funkuhr aus der Batterie während der etwa 600 ms 
+dauernden Abgabe des Zeitprotokolls auf über 200 µA erhöht.
+
+3. Handshaking
+
+Die Funkuhr gibt jedes empfangene Zeichen sofort als Echo zurück. Das 
+nächste Zeichen darf frühestens 10 ms nach dem Eingang des vorhergehenden 
+Zeichens (Echo) gesendet werden. Das Echo erfolgt immer unbedingt, d.h. 
+unabhängig davon, ob eine Interpretation als Befehl möglich ist oder nicht. 
+Einzige Bedingung ist das richtige Auftreten des Startbits und der beiden 
+Stoppbits. Das Bit 7 des Echozeichens (ist in den Antworten der Funkuhr 
+normalerweise das Paritätsbit) entspricht dem des empfangenen Zeichens und 
+wird in der Funkuhr nicht verändert.
+
+4. Spannungsversorgung der Funkuhr
+
+Die Funkuhr mit PC-Schnittstelle ist eine autonom arbeitende Funkuhr, 
+die mit zwei 1,5V-Zellen versorgt wird. Damit ist eine Betriebszeit von 
+etwa zwei Jahren gesichert. Die Spannungsversorgung der seriellen Schnitt-
+stelle ist jedoch von diesen beiden Zellen unabhängig und erfolgt nur dann, 
+wenn die Funkuhr mit ihrem Kabel in eine serielle Schnittstelle eines PC 
+o.ä. eingesteckt ist. Die Pegel der Schnittstellenleitungen werden von der 
+mitgelieferten Treibersoftware so konfiguriert, daß eine korrekte Spannungs-
+versorgung erfolgt.
+Für den Fall, daß ein Anwender die Funkuhr mit einer eigenen Software 
+betreiben will, muß durch die Software die Spannungsversorgung in folgender 
+Weise abgesichert werden:
+
+Die positive Spannung wird durch DTR bereitgestellt.
+Bei der Bereitstellung der negativen Spannung gibt es abhängig von der 
+gewählten Form des Datenaustauschs zwei Möglichkeiten:
+
+1. Die Funkuhr wird mit ASCII-Zeichen, wie unter 5. beschrieben, 
+angesprochen. In diesem Fall wird die negative Spannung durch TxD 
+bereitgestellt. Das erfolgt automatisch, denn TxD ist in Ruhe immer negativ 
+und nur in den kurzen Momenten positiv, in denen der PC Zeichen an die 
+Funkuhr sendet.
+
+2. Die Funkuhr wird gemäß der Beschreibung in Punkt 2.3 angesprochen. 
+In diesem Fall kann TxD während der Datenübertragung auf positivem Pegel 
+liegen und so nicht die negative Betriebsspannung der Schnittstelle liefern. 
+Deshalb gibt es die zusätzliche Möglichkeit, die negative Spannung auch über 
+RTS zu liefern. RTS ist also auf Low-Pegel zu programmieren, falls die 
+Datenübertragung durch statischen High-Pegel von TxD ausgelöst werden soll.
+
+5. Beschreibung der Befehle
+
+Die Befehle 5.7. bis 5.11. (Setzen und Lesen der Alarmzeiten) beziehen sich 
+auf Uhren mit Alarmfunktion.
+
+5.1. Zeitprotokoll Ortszeit senden
+
+Syntax ASCII: o <CR>
+
+Anstelle von "o" sind auch alle anderen Zeichen möglich, deren Code auf 
+f(hex) endet, also z.B. auch / ? O _
+
+Syntax binär: xxxx1111 00001101
+
+Die Funkuhr antwortet auf diesen Befehl mit 16 Zeichen, die die 
+vollständige Zeitinformation enthalten, und dem abschließenden <CR>. Die 
+Antwort erfolgt nicht sofort, sondern erst zum nächsten Sekundenbeginn, 
+der durch die erste Flanke des Startbits des ersten Zeichens (Stundenzehner) 
+gekennzeichnet ist.
+Die einzelnen Zeichen haben folgende Bedeutung:
+
+    1. Stundenzehner
+    2. Stundeneiner
+    3. Minutenzehner
+    4. Minuteneiner
+    5. Sekundenzehner
+    6. Sekundeneiner
+    7. Wochentag 1 (Montag) ... 7 (Sonntag)
+    8. Tageszehner
+    9. Tageseiner
+   10. Monatszehner
+   11. Monatseiner
+   12. Jahreszehner
+   13. Jahreseiner
+   14. Bits 16 ... 19 des DCF77-Protokolls
+        Bit7 Parität
+        Bit6 immer 0
+        Bit5 immer 1
+        Bit4 immer 1
+        Bit3 Ankündiging Schaltsekunde, Bit19 des DCF77-Protokolls
+        Bit2=1 während MEZ, =0 während MESZ, Bit18 des DCF77-Pr.
+        Bit1=0 während MEZ, =1 während MESZ, Bit17 des DCF77-Pr.
+        Bit0 Ankündigung Wechsel MEZ-MESZ und umgekehrt, Bit16 des DCF77-Pr.
+   15. Status
+        Bit7 Parität
+        Bit6 immer 0
+        Bit5 immer 1
+        Bit4 immer 1
+        Bit3 =1 wenn Batteriespannung zu niedrig
+        Bit2 =1 wenn ein Funkempfang erfolglos abgebrochen wurde
+                und noch keine gültige Zeitinformation vorliegt
+                Das kann nach Reset bei schlechten Empfangsbedingungen
+                vorkommen. Dieses Bit wird beim ersten erfolgreichen
+                Empfang rückgesetzt und bleibt dann 0.
+        Bit1 =1 wenn der vorhergehende Empfangsversuch erfolgreich war
+             =0 wenn der vorhergehende Empfangsversuch nicht erfolgreich war
+        Bit0 =1 wenn eine gültige Zeitinformation vorliegt
+                Dieses Bit ist nach Reset =0 und wird mit dem ersten
+                erfolgreichen Empfangsversuch gesetzt.
+
+5.2. Zeitprotokoll Weltzeit senden
+
+Syntax ASCII: e <CR>
+
+Anstelle von "e" sind auch alle anderen Zeichen möglich, deren Code auf 
+5(hex) endet, also z.B. auch u U
+
+Syntax binär: xxxx0101 00001101
+
+Die Funkuhr antwortet auf diesen Befehl mit 16 Zeichen, die die 
+vollständige Weltzeitinformation enthalten, und dem abschließenden <CR>. Die 
+Antwort erfolgt nicht sofort, sondern erst zum nächsten Sekundenbeginn, 
+der durch die erste Flanke des Startbits des ersten Zeichens (Stundenzehner) 
+gekennzeichnet ist.
+Die einzelnen Zeichen haben folgende Bedeutung:
+
+    1. Stundenzehner
+    2. Stundeneiner
+    3. Minutenzehner
+    4. Minuteneiner
+    5. Sekundenzehner
+    6. Sekundeneiner
+    7. Wochentag 1 (Montag) ... 7 (Sonntag)
+    8. Tageszehner
+    9. Tageseiner
+   10. Monatszehner
+   11. Monatseiner
+   12. Jahreszehner
+   13. Jahreseiner
+   14. Bits 16 ... 19 des DCF77-Protokolls
+        Bit7 Parität
+        Bit6 immer 0
+        Bit5 immer 1
+        Bit4 immer 1
+        Bit3 Ankündiging Schaltsekunde, Bit19 des DCF77-Protokolls
+        Bit2=1 während MEZ, =0 während MESZ, Bit18 des DCF77-Pr.
+        Bit1=0 während MEZ, =1 während MESZ, Bit17 des DCF77-Pr.
+        Bit0 Ankündigung Wechsel MEZ-MESZ und umgekehrt, Bit16 des DCF77-Pr.
+   15. Status
+        Bit7 Parität
+        Bit6 immer 0
+        Bit5 immer 1
+        Bit4 immer 1
+        Bit3 =1 wenn Batteriespannung zu niedrig
+        Bit2 =1 wenn ein Funkempfang erfolglos abgebrochen wurde
+                und noch keine gültige Zeitinformation vorliegt
+                Das kann nach Reset bei schlechten Empfangsbedingungen
+                vorkommen. Dieses Bit wird beim ersten erfolgreichen
+                Empfang rückgesetzt und bleibt dann 0.
+        Bit1 =1 wenn der vorhergehende Empfangsversuch erfolgreich war
+             =0 wenn der vorhergehende Empfangsversuch nicht erfolgreich war
+        Bit0 =1 wenn eine gültige Zeitinformation vorliegt
+                Dieses Bit ist nach Reset =0 und wird mit dem ersten
+                erfolgreichen Empfangsversuch gesetzt.
+
+5.3. Uhrenstatus senden
+
+Syntax ASCII: f <CR>
+
+Anstelle von "f" sind auch alle anderen Zeichen möglich, deren Code auf 
+6 endet, also z.B. auch 6 F V v
+
+Syntax binär: xxxx0110 00001101
+
+Die Funkuhr antwortet auf diesen Befehl mit 4 Zeichen und dem 
+abschließenden <CR>.Die beiden Zeichen haben folgende Bedeutung:
+
+   1. Zehner der Anzahl Stunden seit letztem erfolgreichen Empfang
+   2. Einer der Anzahl Stunden seit letztem erfolgreichen Empfang
+   3. Information über Betriebsstatus
+       Bit7 Parität
+       Bit6 immer 0
+       Bit5 immer 1
+       Bit4 immer 1
+       Bit3 =1 bei DCF77-Version
+            =0 bei MSF-Version
+       Bit2 ohne Bedeutung
+       Bit1 ohne Bedeutung
+       Bit0 Schaltstatus
+            Weckzeit 1 setzt dieses Bit 1
+            Weckzeit 2 setzt dieses Bit 0
+   4. ASCII "0"
+
+5.4. Funkempfangsstatus senden
+
+Syntax ASCII: g <CR>
+
+Anstelle von "g" sind auch alle anderen Zeichen möglich, deren Code auf 
+7 endet, also z.B. auch ` 7 G W w
+
+Syntax binär: xxxx0111 00001101
+
+Die Funkuhr antwortet auf diesen Befehl mit 2 Zeichen und dem 
+abschließenden <CR>.Die beiden Zeichen haben folgende Bedeutung:
+
+   1. Funkempfangsstatus
+       Bit7 Parität
+       Bit6 immer 0
+       Bit5 immer 1
+       Bit4 immer 1
+       Bit3 immer 0
+       Bit2 immer 0
+       Bit1 immer 1
+       Bit0 =0 wenn momentan kein Funkempfangsversuch stattfindet
+            =1 wenn momentan ein Funkempfangsversuch stattfindet
+   2. Funkempfangsqualitätskennzahl im Bereich 0 ... 5
+       5 entspricht völlig ungestörtem Empfang
+       0 entspricht sehr schlechtem Empfang
+       Bei 0, 1 und 2 ist normalerweise nicht mit erfolgreichem Empfang
+       zu rechnen. In der Pause zwischen den Empfangsversuchen ist die
+       Qualitätskennzahl immer 0.
+
+5.5. Sofort Funkempfang durchführen
+
+Syntax ASCII: h <CR>
+
+Anstelle von "h" sind auch alle anderen Zeichen möglich, deren Code auf 8 
+endet, also z.B. auch  ( 8H X x
+
+Syntax binär: xxxx1000 00001101
+
+Die Funkuhr schaltet nach diesem Befehl ihren Empfänger ein und führt 
+einen Empfangsversuch durch. Endet dieser Versuch erfolglos, ist danach 
+das Bit1 des 15. Zeichens des Zeitprotokolls (siehe 5.1. und 5.2)
+gleich Null. Endet der Empfangsversuch erfolgreich, ist danach dieses Bit
+in gesetzt.
+
+5.6. Sofort Funkempfang durchführen
+
+Syntax ASCII: i <CR>
+
+Anstelle von "i" sind auch alle anderen Zeichen möglich, deren Code auf 9 
+endet, also z.B. auch ) 9 I Y y
+
+Syntax binär: xxxx1001 00001101
+
+Dieser Befehl bewirkt dasselbe wie "h" und ist aus Kompatibilitätsgründen
+vorhanden (siehe 5.5).
+
+5.6. Weckzeiten senden
+
+Syntax ASCII: j <CR>
+
+Anstelle von "j" sind auch alle anderen Zeichen möglich, deren Code auf 
+a(hex) endet, also z.B. auch * : J Z z
+
+Syntax binär: xxxx1010 00001101
+
+Die Funkuhr antwortet auf diesen Befehl mit 8 Zeichen, die die beiden 
+Weckzeiten kennzeichnen sowie dem abschließenden <CR>. Zeit 1 ist dabei die 
+Weckzeit 1, Zeit 2 ist die Weckzeit 2.
+Die Zeichen haben folgende Bedeutung:
+       1. Zeit 1, Stundenzehner
+       2. Zeit 1, Stundeneiner
+       3. Zeit 1, Minutenzehner
+       4. Zeit 1, Minuteneiner
+       5. Zeit 2, Stundenzehner
+       6. Zeit 2, Stundeneiner
+       7. Zeit 2, Minutenzehner
+       8. Zeit 2, Minuteneiner
+
+Für alle Zeichen gilt folgende Bitbelegung:
+       Bit7 Parität
+       Bit6 immer 0
+       Bit5 immer 1
+       Bit4 immer 1
+       Bit3 n3
+       Bit2 n2
+       Bit1 n1
+       Bit0 n0
+Die Bits n3...n0 beinhalten die entsprechenden Zahlen 0 ... 9 im Binär-
+format. Um die eingestellten Zeiten unwirksam zu machen, wird im entspre-
+chenden Stundenzehner das Bit3 gesetzt. Daher können in den Stundenzehnern 
+auch neben 0, 1 und 2 auch 8, 9 und a(hex) auftreten.
+
+5.8. Stunden der Weckzeit 1 setzen
+
+Syntax ASCII: <Zehner> <Einer> k <CR>
+
+Anstelle von "k" sind auch alle anderen Zeichen möglich, deren Code auf 
+b(hex) endet, also z.B. auch + ; K [
+
+Syntax binär: xxxxz3z2z1z0  xxxxe3e2e1e0  xxxx1011  00001101
+
+Die Funkuhr übernimmt mit diesem Befehl die beiden Parameter <Zehner> 
+und <Einer> in das Stundenregister der Weckzeit 1.
+Um die Weckzeit 1 unwirksam zu machen, ist das Bit z3 zu setzen.
+Achtung: Falls bei diesem Befehl Parameter weggelassen werden, ist das 
+entsprechende Register nach dem Befehl undefiniert.
+
+5.9. Minuten der Weckzeit 1 setzen
+
+Syntax ASCII: <Zehner> <Einer> l <CR>
+
+Anstelle von "l" sind auch alle anderen Zeichen möglich, deren Code auf 
+c(hex) endet, also z.B. auch , < L \
+
+Syntax binär: xxxxz3z2z1z0  xxxxe3e2e1e0  xxxx1100  00001101
+
+Die Funkuhr übernimmt mit diesem Befehl die beiden Parameter <Zehner> 
+und <Einer> in das Minutenregister der Weckzeit 1.
+Achtung: Falls bei diesem Befehl Parameter weggelassen werden, ist das 
+entsprechende Register nach dem Befehl undefiniert.
+
+5.10. Stunden der Weckzeit 2 setzen
+
+Syntax ASCII: <Zehner> <Einer> m <CR>
+
+Anstelle von "m" sind auch alle anderen Zeichen möglich, deren Code auf 
+d(hex) endet, also z.B. auch - = M ]
+
+Syntax binär: xxxxz3z2z1z0  xxxxe3e2e1e0  xxxx1101  00001101
+
+Die Funkuhr übernimmt mit diesem Befehl die beiden Parameter <Zehner> 
+und <Einer> in das Stundenregister der Weckzeit 2.
+Um die Weckzeit 2 unwirksam zu machen, ist das Bit z3 zu setzen.
+Achtung: Falls bei diesem Befehl Parameter weggelassen werden, ist das 
+entsprechende Register nach dem Befehl undefiniert.
+
+5.11. Minuten der Weckzeit2 setzen
+
+Syntax ASCII: <Zehner> <Einer> n <CR>
+
+Anstelle von "n" sind auch alle anderen Zeichen möglich, deren Code auf 
+e(hex) endet, also z.B. auch . > N ^
+
+Syntax binär: xxxxz3z2z1z0  xxxxe3e2e1e0  xxxx1110  00001101
+
+Die Funkuhr übernimmt mit diesem Befehl die beiden Parameter <Zehner> 
+und <Einer> in das Minutenregister der Weckzeit 2.
+Achtung: Falls bei diesem Befehl Parameter weggelassen werden, ist das 
+entsprechende Register nach dem Befehl undefiniert.
+
+5.12. Alarmstatus senden
+
+Syntax ASCII: a <CR>
+
+Syntax binär: xxxx0001 00001101
+
+Die Funkuhr antwortet auf diesen Befehl mit 9 Zeichen. Die Zeichen haben folgende Bedeutung:
+
+	1. Bit0-3: Bit 5-8 des Funkprotokolls
+	2. Bit0-3: Bit 1-4 des Funkprotokolls
+	3. Bit0-1: Bit 13 und 14 des Funkprotokols
+	4. Bit0-3: Bit 9-12 des Funkprotokolls	
+	5. Bit0-1: Minute mod 3
+	6. Bit0:   Alarmbereitschaft	
+	   Bit1:   Alarmbit
+	   Bit2:   Fehlerbit
+	7. Bit0-3: Statistik
+	8. Bit0-3: Version
+	9. Bit0-3: 0
+
+6. Test der Schnittstelle
+Mit einem einfachen Terminalprogramm kann die Funktion der Schnittstelle 
+leicht getestet werden. Hier die Parameter für Windows Terminal, die für 
+andere Terminalprogramme sinngemäß gelten:
+
+  - 300 Baud Übertragungsrate
+  - 7 Datenbits
+  - Parität "Leerzeichen"
+  - 2 Stoppbits
+  - Protokoll "kein"
+  - Anschluß je nach gewählter Schnittstelle
+
